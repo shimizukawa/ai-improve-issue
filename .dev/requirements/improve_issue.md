@@ -247,9 +247,11 @@ RAG検索・ベクトルDB連携はPhase 2で実装予定。現行では `--inde
 - メタデータ: Issue番号・作成日・ラベル・状態（open/closed）など
 
 **インデックス更新タイミング:**
-- Issue作成時
-- Issue本文・コメント更新時
-- 定期バッチでの全体同期
+- Issue作成時(例文生成後に自動登録)
+- Issue本文更新時(edited イベント)
+- Issue状態変更時(closed, reopened イベント)
+- コメント投稿時(issue_comment.created イベント)
+- 初回セットアップ時(CLI実行: `--index-issues`)
 
 ### GitHub Actions Workflow
 
@@ -394,9 +396,12 @@ jobs:
 
 **実装内容:**
 - [ ] Qdrant Cloudのセットアップ
-- [ ] Embedding生成サービスの選定・実装
-- [ ] 既存Issue情報のベクトル化とインデックス登録
-- [ ] 類似Issue検索機能の実装
+- [ ] Embedding生成サービスの選定・実装(Voyage AI 3.5-lite または Gemini Embedding-004)
+- [ ] `--index-issues` コマンドによる既存Issue一括インデックス機能
+- [ ] `--update-single-issue` コマンドによる単一Issue更新機能
+- [ ] Issue作成時の自動インデックス登録(例文生成後)
+- [ ] Issue編集時の自動インデックス更新(イベント駆動)
+- [ ] 類似Issue検索機能の実装(Top-3)
 - [ ] 検索結果をプロンプトに含めた例文生成
 - [ ] 参考にしたIssueをコメントに明示
 

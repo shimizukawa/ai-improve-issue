@@ -154,29 +154,54 @@ collection_config = {
 }
 ```
 
-**インデックス更新フロー:**
+**インデックス更新方針:**
+
+1. **イベント駆動型更新**: Issue作成・編集・コメント投稿時に自動更新
+2. **初回インデックス**: CLIコマンドで既存Issue一括登録
+3. **定期同期不要**: イベント駆動で常に最新状態を維持
+
+**初回インデックス作成(CLI実行):**
+
+```bash
+# 既存Issue全体の初回インデックス作成
+uv run .github/scripts/improve_issue.py --index-issues
+
+# 範囲指定も可能(オプション)
+uv run .github/scripts/improve_issue.py --index-issues --issue-range 1-100
+```
+
+**イベント駆動型インデックス更新:**
 
 ```yaml
-# .github/workflows/update_issue_index.yml
-name: Update Issue Index
+# .github/workflows/issue_auto_improve.yml に統合
+# Issue作成時: RAG検索 + 例文生成 + インデックス登録を同時実行
+# Issue編集時: インデックス更新のみ
 
 on:
   issues:
     types: [opened, edited, closed, reopened]
-  schedule:
-    - cron: '0 0 * * 0'  # 毎週日曜0時に全体同期
+  issue_comment:
+    types: [created, edited]
 
 jobs:
+  # Issue作成時: 例文生成 + インデックス登録
+  improve-issue:
+    if: github.event.action == 'opened'
+    # ... (既存処理) ...
+    # 処理完了後にインデックス登録
+
+  # Issue更新時: インデックス更新のみ
   update-index:
-    runs-on: ubuntu-latest
+    if: |
+      github.event.action == 'edited' ||
+      github.event.action == 'closed' ||
+      github.event.action == 'reopened' ||
+      github.event_name == 'issue_comment'
+    runs-on: ubuntu-slim
+    timeout-minutes: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -185,12 +210,12 @@ jobs:
 
       - name: Update Qdrant index
         run: |
-          uvx .github/scripts/improve_issue.py --index-issues
+          uv run .github/scripts/improve_issue.py --update-single-issue ${{ github.event.issue.number }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           QDRANT_URL: ${{ secrets.QDRANT_URL }}
           QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
-          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}  # Voyage AI
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
 ```
 
 **RAG・インデックス更新フロー:**

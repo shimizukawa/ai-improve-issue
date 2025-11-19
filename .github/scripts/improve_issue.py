@@ -37,6 +37,7 @@ from qdrant_client.models import (
     Filter,
     MatchValue,
     PayloadSchemaType,
+    PointIdsList,
     PointStruct,
     VectorParams,
 )
@@ -363,7 +364,8 @@ class QdrantSearchClient:
         if existing_points:
             ids_to_delete = [str(point.id) for point in existing_points]
             self.client.delete(
-                collection_name=self.COLLECTION_NAME, points_selector=ids_to_delete
+                collection_name=self.COLLECTION_NAME,
+                points_selector=PointIdsList(points=ids_to_delete),
             )
 
         # 新しいチャンクを登録
@@ -546,11 +548,11 @@ def create_embeddings_for_chunks(
     """
     # Batch embed all chunks at once
     result = embedding_client.client.embed(
-        texts=chunks,
-        model=embedding_client.model,
-        output_dimension=dimensions
+        texts=chunks, model=embedding_client.model, output_dimension=dimensions
     )
     return result.embeddings
+
+
 # ==================== メイン処理 ====================
 
 
@@ -722,9 +724,7 @@ def index_all_issues(start: int = 1, end: int | None = None):
         chunks = create_issue_chunks(issue["title"], issue["body"])
 
         # 各チャンクのEmbeddingベクトル生成
-        vectors = create_embeddings_for_chunks(
-            chunks, voyage_client, dimensions=256
-        )
+        vectors = create_embeddings_for_chunks(chunks, voyage_client, dimensions=256)
 
         # テンプレート判定
         template_type = detector.detect(issue["body"], issue["title"])

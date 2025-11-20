@@ -348,21 +348,36 @@ class QdrantSearchClient:
             labels: ラベルリスト
         """
         # 既存のチャンクを削除（issue_numberで始まるIDを検索して削除）
-        existing_points, _ = self.client.scroll(
-            collection_name=self.COLLECTION_NAME,
-            scroll_filter=Filter(
-                must=[
-                    FieldCondition(
-                        key="issue_number",
-                        match=MatchValue(value=issue_number),
-                    )
-                ]
-            ),
-            limit=100,
-        )
+        ids_to_delete: list[str] = []
+        offset: dict | None = None
+        while True:
+            existing_points, next_offset = self.client.scroll(
+                collection_name=self.COLLECTION_NAME,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(
+                            key="issue_number",
+                            match=MatchValue(value=issue_number),
+                        )
+                    ]
+                ),
+                limit=256,
+                offset=offset,
+                with_payload=False,
+                with_vectors=False,
+            )
 
-        if existing_points:
-            ids_to_delete = [str(point.id) for point in existing_points]
+            if not existing_points:
+                break
+
+            ids_to_delete.extend(str(point.id) for point in existing_points)
+
+            if next_offset is None:
+                break
+
+            offset = next_offset
+
+        if ids_to_delete:
             self.client.delete(
                 collection_name=self.COLLECTION_NAME,
                 points_selector=PointIdsList(points=ids_to_delete),

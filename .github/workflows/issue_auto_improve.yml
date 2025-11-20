@@ -76,9 +76,14 @@ jobs:
     
     # Issue更新時またはコメント投稿時のみ実行
     if: |
-      github.event.action == 'edited' ||
-      github.event.action == 'closed' ||
-      github.event.action == 'reopened' ||
+      (
+        github.event_name == 'issues' &&
+        (
+          github.event.action == 'edited' ||
+          github.event.action == 'closed' ||
+          github.event.action == 'reopened'
+        )
+      ) ||
       github.event_name == 'issue_comment'
     
     steps:

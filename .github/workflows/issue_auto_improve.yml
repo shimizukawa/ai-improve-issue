@@ -74,17 +74,14 @@ jobs:
       contents: read
       issues: read
     
-    # Issue更新時またはコメント投稿時のみ実行
+    # Issue更新時のみ実行（コメント投稿では実行しない）
     if: |
+      github.event_name == 'issues' &&
       (
-        github.event_name == 'issues' &&
-        (
-          github.event.action == 'edited' ||
-          github.event.action == 'closed' ||
-          github.event.action == 'reopened'
-        )
-      ) ||
-      github.event_name == 'issue_comment'
+        github.event.action == 'edited' ||
+        github.event.action == 'closed' ||
+        github.event.action == 'reopened'
+      )
     
     steps:
       - name: Checkout repository

@@ -161,7 +161,7 @@ collection_config = {
 
 **インデックス更新方針:**
 
-1. **イベント駆動型更新**: Issue作成・編集・コメント投稿時に自動更新
+1. **イベント駆動型更新**: Issue作成・編集・状態変更時に自動更新（コメント投稿は現時点ではトリガーに含めない）
 2. **初回インデックス**: CLIコマンドで既存Issue一括登録
 3. **定期同期不要**: イベント駆動で常に最新状態を維持
 
@@ -183,10 +183,8 @@ uv run .github/scripts/improve_issue.py --index-issues --issue-range 1-100
 # Issue編集時: インデックス更新のみ
 
 on:
-  issues:
-    types: [opened, edited, closed, reopened]
-  issue_comment:
-    types: [created, edited]
+    issues:
+        types: [opened, edited, closed, reopened]
 
 jobs:
   # Issue作成時: 例文生成 + インデックス登録
@@ -196,12 +194,16 @@ jobs:
     # 処理完了後にインデックス登録
 
   # Issue更新時: インデックス更新のみ
-  update-index:
-    if: |
-      github.event.action == 'edited' ||
-      github.event.action == 'closed' ||
-      github.event.action == 'reopened' ||
-      github.event_name == 'issue_comment'
+    update-index:
+        if: |
+            (
+                github.event_name == 'issues' &&
+                (
+                    github.event.action == 'edited' ||
+                    github.event.action == 'closed' ||
+                    github.event.action == 'reopened'
+                )
+            )
     runs-on: ubuntu-slim
     timeout-minutes: 1
     steps:

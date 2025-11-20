@@ -110,20 +110,20 @@
 
 ### Phase 1（実装済み）
 
-- ✅ Issue作成時にGitHub Actions Workflowが自動起動する（`on: issues.types: [opened]`）
-- ✅ `ai-processing` / `ai-processed` ラベルで状態を管理し、重複Commentと多重実行を防止
-- ✅ キーワードベースで `feature_request` / `bug_report` のテンプレートを選定
-- ✅ `.github/ISSUE_TEMPLATE` に沿ったプロンプトを組み立てて、Gemini API (`gemini-2.5-flash`) から例文を生成
-- ✅ `gh issue comment` でフォーマット済みコメントを投稿し、`ai-processed` を付与
-- ✅ `uv run .github/scripts/improve_issue.py --dry-run` でローカル検証が行える
+- [x] Issue作成時にGitHub Actions Workflowが自動起動する（`on: issues.types: [opened]`）
+- [x] `ai-processing` / `ai-processed` ラベルで状態を管理し、重複Commentと多重実行を防止
+- [x] キーワードベースで `feature_request` / `bug_report` のテンプレートを選定
+- [x] `.github/ISSUE_TEMPLATE` に沿ったプロンプトを組み立てて、Gemini API (`gemini-2.5-flash`) から例文を生成
+- [x] `gh issue comment` でフォーマット済みコメントを投稿し、`ai-processed` を付与
+- [x] `uv run .github/scripts/improve_issue.py --dry-run` でローカル検証が行える
 
 ### Phase 2 以降（未実装・将来対応）
 
-- [ ] RAG で類似Issueを取得し、Top-Kをプロンプトに含める
-- [ ] 類似Issueのメタ情報（スコア・番号・URL）をコメントで明示
-- [ ] Issue本文更新時の再生成・コメント更新を自動化
-- [ ] Qdrant Cloud 等のベクトルDBに Issue をインデックス登録
-- [ ] `--index-issues` / Embedding API による RAG インジェスト機能
+- [x] RAG で類似Issueを取得し、Top-Kをプロンプトに含める
+- [x] 類似Issueのメタ情報（スコア・番号・URL）をコメントで明示
+- [x] Issue本文更新時の再生成・コメント更新を自動化
+- [x] Qdrant Cloud 等のベクトルDBに Issue をインデックス登録
+- [x] `--index-issues` / Embedding API による RAG インジェスト機能
 
 ## 機能仕様
 
@@ -156,7 +156,7 @@
 - 類似Issueのメタデータ（状態・ラベル・作成日）
 
 **RAG動作モード:**
-- **RAG有効**: `QDRANT_URL`, `QDRANT_API_KEY`, `VOYAGE_API_KEY`（または `GEMINI_API_KEY`）が全て設定されている場合
+- **RAG有効**: `QDRANT_URL`, `QDRANT_API_KEY`, `VOYAGE_API_KEY` が全て設定されている場合
 - **RAGなし**: 上記環境変数のいずれかが不足している場合、Phase 1モードで動作（エラーにはしない）
 - 動作モードはログに出力され、ユーザーは環境変数の設定状況を確認可能
 
@@ -249,18 +249,22 @@ RAG検索・ベクトルDB連携はPhase 2で実装予定。現行では `--inde
 | **コメント投稿** | あり（`--dry-run`でスキップ） | なし |
 | **出力** | コメント or コンソール | 進捗ログ |
 
-#### データ構造設計（Phase 2予定）
+#### データ構造設計（Phase 2以降の予定）
 
 **Issueデータの扱い:**
-- Issue本文を主要なドキュメントとして扱い、コメントは従属情報として紐付け
+- 現時点では Issue本文を主要なドキュメントとして扱う
+- 将来的には Issueコメントや外部ドキュメントサービスのナレッジも "関連ドキュメント" として紐付け、検索コンテキストとして利用する
 - メタデータ: Issue番号・作成日・ラベル・状態（open/closed）など
 
 **インデックス更新タイミング:**
 - Issue作成時(例文生成後に自動登録)
 - Issue本文更新時(edited イベント)
 - Issue状態変更時(closed, reopened イベント)
-- コメント投稿時(issue_comment.created イベント)
 - 初回セットアップ時(CLI実行: `--index-issues`)
+
+> メモ（現時点の方針）
+> - コメント投稿をトリガーに Issue本文を毎回再インデックスする運用は、コスト対効果が低いため行わない
+> - 将来的にコメント本文や外部ナレッジをインデックス対象に含める際に、改めてコメントイベントをトリガーとして利用する
 
 ### GitHub Actions Workflow
 
@@ -405,7 +409,7 @@ jobs:
 
 **実装内容:**
 - [ ] Qdrant Cloudのセットアップ
-- [ ] Embedding生成サービスの選定・実装(Voyage AI 3.5-lite または Gemini Embedding-004)
+- [ ] Embedding生成サービスの選定・実装(Voyage AI 3.5-lite)
 - [ ] **RAG環境変数チェック機能**: 必要な環境変数の有無を判定し、不足時はRAGなしモードで動作
 - [ ] 動作モードのログ出力（RAG有効/無効の明示）
 - [ ] `--index-issues` コマンドによる既存Issue一括インデックス機能

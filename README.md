@@ -125,7 +125,7 @@ PEP-723に従い、スクリプト内で依存関係を定義：
 ```python
 # /// script
 # dependencies = [
-#   "google-generativeai>=0.8.3",
+#   "some-package==0.0.0",
 # ]
 # ///
 ```

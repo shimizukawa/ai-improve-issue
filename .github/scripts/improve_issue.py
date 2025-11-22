@@ -18,6 +18,7 @@ PEP-723対応: uvx で実行可能
 """
 
 import argparse
+import dataclasses
 import json
 import os
 import sys
@@ -50,30 +51,26 @@ TemplateType = Literal["feature_request", "bug_report"]
 # ==================== 設定管理 ====================
 
 
+@dataclasses.dataclass
 class Config:
     """環境変数の一元管理クラス
-
-    全ての環境変数の取得を集約し、設定の可視性を向上させる。
-    必須環境変数とオプション環境変数を明確に区別する。
     """
+    # GitHub関連（GitHub Actions実行時に自動設定）
+    github_repository: str = dataclasses.field(default_factory=lambda: os.environ.get("GITHUB_REPOSITORY", ""))
+    github_token: str = dataclasses.field(default_factory=lambda: os.environ.get("GITHUB_TOKEN", ""))
 
-    def __init__(self):
-        # GitHub関連（GitHub Actions実行時に自動設定）
-        self.github_repository: str = os.environ.get("GITHUB_REPOSITORY", "")
-        self.github_token: str = os.environ.get("GITHUB_TOKEN", "")
+    # Issue情報（通常モード実行時に必要）
+    issue_body: str = dataclasses.field(default_factory=lambda: os.environ.get("ISSUE_BODY", ""))
+    issue_title: str = dataclasses.field(default_factory=lambda: os.environ.get("ISSUE_TITLE", ""))
+    issue_number: str = dataclasses.field(default_factory=lambda: os.environ.get("ISSUE_NUMBER", ""))
 
-        # Issue情報（通常モード実行時に必要）
-        self.issue_body: str = os.environ.get("ISSUE_BODY", "")
-        self.issue_title: str = os.environ.get("ISSUE_TITLE", "")
-        self.issue_number: str = os.environ.get("ISSUE_NUMBER", "")
+    # LLM API（通常モード実行時に必須）
+    llm_api_key: str = dataclasses.field(default_factory=lambda: os.environ.get("LLM_API_KEY", ""))
 
-        # LLM API（通常モード実行時に必須）
-        self.llm_api_key: str = os.environ.get("LLM_API_KEY", "")
-
-        # RAG機能（オプション - 全て設定された場合のみ有効化）
-        self.qdrant_url: str = os.environ.get("QDRANT_URL", "")
-        self.qdrant_api_key: str = os.environ.get("QDRANT_API_KEY", "")
-        self.voyage_api_key: str = os.environ.get("VOYAGE_API_KEY", "")
+    # RAG機能（オプション - 全て設定された場合のみ有効化）
+    qdrant_url: str  = dataclasses.field(default_factory=lambda: os.environ.get("QDRANT_URL", ""))
+    qdrant_api_key: str = dataclasses.field(default_factory=lambda: os.environ.get("QDRANT_API_KEY", ""))
+    voyage_api_key: str = dataclasses.field(default_factory=lambda: os.environ.get("VOYAGE_API_KEY", ""))
 
     @property
     def is_rag_enabled(self) -> bool:
@@ -102,6 +99,9 @@ class Config:
             raise ValueError("Error: QDRANT_URL not set")
         if not self.qdrant_api_key:
             raise ValueError("Error: QDRANT_API_KEY not set")
+
+# 設定を読み込み
+config = Config()
 
 
 # テンプレートタイプに応じた役割と指示
@@ -467,12 +467,11 @@ class QdrantSearchClient:
 # ==================== GitHub API ====================
 
 
-def fetch_issue_from_github(issue_number: int, config: Config) -> dict | None:
+def fetch_issue_from_github(issue_number: int) -> dict | None:
     """GitHub APIからIssue情報を取得
 
     Args:
         issue_number: Issue番号
-        config: 設定オブジェクト
 
     Returns:
         Issue情報の辞書、取得失敗時はNone
@@ -505,13 +504,10 @@ def fetch_issue_from_github(issue_number: int, config: Config) -> dict | None:
     }
 
 
-def fetch_all_issues(
-    config: Config, start: int = 1, end: int | None = None
-) -> list[dict]:
+def fetch_all_issues(start: int = 1, end: int | None = None) -> list[dict]:
     """全Issue情報を取得
 
     Args:
-        config: 設定オブジェクト
         start: 開始Issue番号
         end: 終了Issue番号（Noneの場合は全て）
 
@@ -558,7 +554,7 @@ def fetch_all_issues(
     # 各Issueの詳細を取得
     issues = []
     for num in issue_numbers:
-        issue = fetch_issue_from_github(num, config)
+        issue = fetch_issue_from_github(num)
         if issue:
             issues.append(issue)
 
@@ -744,11 +740,10 @@ def format_comment(
     return comment
 
 
-def index_all_issues(config: Config, start: int = 1, end: int | None = None):
+def index_all_issues(start: int = 1, end: int | None = None):
     """全Issueをインデックス登録（--index-issues モード）
 
     Args:
-        config: 設定オブジェクト
         start: 開始Issue番号
         end: 終了Issue番号（Noneの場合は全て）
     """
@@ -759,7 +754,7 @@ def index_all_issues(config: Config, start: int = 1, end: int | None = None):
     print("Fetching issues from GitHub...")
 
     # Issue一覧取得
-    issues = fetch_all_issues(config, start, end)
+    issues = fetch_all_issues(start, end)
     if not issues:
         print("No issues found")
         sys.exit(0)
@@ -807,11 +802,10 @@ def index_all_issues(config: Config, start: int = 1, end: int | None = None):
     print(f"Success: {success_count}/{len(issues)} issues")
 
 
-def update_single_issue(config: Config, issue_number: int):
+def update_single_issue(issue_number: int):
     """単一Issueをインデックス更新（--update-single-issue モード）
 
     Args:
-        config: 設定オブジェクト
         issue_number: Issue番号
     """
     config.validate_for_github_operations()
@@ -820,7 +814,7 @@ def update_single_issue(config: Config, issue_number: int):
     print(f"=== Update Single Issue #{issue_number} ===")
 
     # Issue情報取得
-    issue = fetch_issue_from_github(issue_number, config)
+    issue = fetch_issue_from_github(issue_number)
     if not issue:
         print(f"Error: Failed to fetch issue #{issue_number}")
         sys.exit(1)
@@ -881,17 +875,14 @@ def main():
     parser.add_argument("--end", type=int, help="RAGインデックス終了Issue番号")
     args = parser.parse_args()
 
-    # 設定を読み込み
-    config = Config()
-
     # RAGデータ生成モード
     if args.index_issues:
-        index_all_issues(config, start=args.start, end=args.end)
+        index_all_issues(start=args.start, end=args.end)
         sys.exit(0)
 
     # 単一Issue更新モード
     if args.update_single_issue:
-        update_single_issue(config, args.update_single_issue)
+        update_single_issue(args.update_single_issue)
         sys.exit(0)
 
     # 通常モード: Issue改善
@@ -967,41 +958,44 @@ def main():
     post_comment_via_gh(config.issue_number, output)
 
     # RAGインデックス登録（例文生成後）
-    if config.is_rag_enabled:
-        print("Indexing current issue to RAG...")
-        detector = TemplateDetector()
-        template_type = detector.detect(config.issue_body, config.issue_title)
+    if not config.is_rag_enabled:
+        print("QDRANT_* and VOYAGE_* env values are required to enable RAG mode.")
+        sys.exit(0)
 
-        voyage_client = VoyageEmbeddingClient(api_key=config.voyage_api_key)
-        qdrant_client = QdrantSearchClient(
-            url=config.qdrant_url, api_key=config.qdrant_api_key
-        )
-        qdrant_client.ensure_collection(vector_size=256)
+    print("Indexing current issue to RAG...")
+    detector = TemplateDetector()
+    template_type = detector.detect(config.issue_body, config.issue_title)
 
-        # チャンク分割
-        chunks = create_issue_chunks(config.issue_title, config.issue_body)
+    voyage_client = VoyageEmbeddingClient(api_key=config.voyage_api_key)
+    qdrant_client = QdrantSearchClient(
+        url=config.qdrant_url, api_key=config.qdrant_api_key
+    )
+    qdrant_client.ensure_collection(vector_size=256)
 
-        # 各チャンクのEmbeddingベクトル生成
-        vectors = create_embeddings_for_chunks(chunks, voyage_client, dimensions=256)
+    # チャンク分割
+    chunks = create_issue_chunks(config.issue_title, config.issue_body)
 
-        # IssueのURL生成
-        issue_url = (
-            f"https://github.com/{config.github_repository}/issues/{config.issue_number}"
-            if config.github_repository
-            else ""
-        )
+    # 各チャンクのEmbeddingベクトル生成
+    vectors = create_embeddings_for_chunks(chunks, voyage_client, dimensions=256)
 
-        qdrant_client.upsert_issue_chunks(
-            issue_number=int(config.issue_number),
-            chunks=chunks,
-            vectors=vectors,
-            title=config.issue_title,
-            template_type=template_type,
-            state="open",
-            url=issue_url,
-            labels=[],
-        )
-        print("Issue indexed successfully")
+    # IssueのURL生成
+    issue_url = (
+        f"https://github.com/{config.github_repository}/issues/{config.issue_number}"
+        if config.github_repository
+        else ""
+    )
+
+    qdrant_client.upsert_issue_chunks(
+        issue_number=int(config.issue_number),
+        chunks=chunks,
+        vectors=vectors,
+        title=config.issue_title,
+        template_type=template_type,
+        state="open",
+        url=issue_url,
+        labels=[],
+    )
+    print("Issue indexed successfully")
 
 
 if __name__ == "__main__":

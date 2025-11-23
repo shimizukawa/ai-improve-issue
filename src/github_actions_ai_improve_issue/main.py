@@ -122,6 +122,25 @@ class Config:
 config = Config()
 
 
+# ==================== ユーティリティ ====================
+
+
+def find_repo_root() -> Path:
+    """リポジトリルートを探索
+
+    Returns:
+        Path: リポジトリルートディレクトリ
+    """
+    # .git ディレクトリを探す
+    current = Path(__file__).resolve()
+    for parent in [current] + list(current.parents):
+        if (parent / ".git").exists():
+            return parent
+
+    # .git が見つからない場合は、スクリプトから2階層上をデフォルトとする
+    return Path(__file__).resolve().parents[2]
+
+
 # ==================== テンプレート設定 ====================
 
 
@@ -167,8 +186,7 @@ def load_settings() -> ImproveIssueSettings:
     if config_path:
         config_file = Path(config_path)
     else:
-        # スクリプトの場所からリポジトリルートを推定
-        repo_root = Path(__file__).resolve().parents[2]
+        repo_root = find_repo_root()
         config_file = repo_root / ".improve_issue.yml"
 
     if not config_file.exists():
@@ -384,7 +402,6 @@ class LLMClient:
             pass
 
         # finish_reasonを確認してエラーメッセージを生成
-        print(f"Debug: finish_reason={response.candidates}")
         finish_reason = None
         if response.candidates:
             finish_reason = response.candidates[0].finish_reason

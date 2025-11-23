@@ -41,14 +41,14 @@ export ISSUE_NUMBER="123"
 export LLM_API_KEY="your-gemini-api-key"
 
 # dry-runモードで実行（コメント投稿なし、コンソールに出力）
-uv run -m github_actions_ai_improve_issue.main --dry-run
+uv run -m github_actions_ai_improve_issue --dry-run
 ```
 
 ## 設定ファイル
 
 ### 必須設定
 
-リポジトリルートに `.improve_issue.yml` ファイルが必須です。設定ファイルが見つからない場合はエラーで終了します。
+設定ファイルが必須です。設定ファイルが見つからない場合はエラーで終了します。
 
 設定ファイルの配置場所:
 1. 環境変数 `IMPROVE_ISSUE_CONFIG` で指定したパス（優先）
@@ -187,43 +187,25 @@ src/
     └── main.py                 # メインスクリプト
 ```
 
-### 依存関係
-
-PEP-723に従い、スクリプト内で依存関係を定義：
-
-```python
-# /// script
-# dependencies = [
-#   "google-generativeai>=0.8.3",
-#   "voyageai>=0.2.3",
-#   "qdrant-client==1.16.*",
-#   "langchain-text-splitters>=0.3.0",
-#   "pyyaml>=6.0",
-# ]
-# ///
-```
-
-`uv run -m github_actions_ai_improve_issue.main` コマンドで実行すると、自動的に依存関係のインストール後に実行されます。
-
-### 実装モード
+### 実行コマンド
 
 スクリプトは以下の実行モードをサポート：
 
 1. **通常モード**: GitHub Actionsから実行、コメント投稿、RAG検索（環境変数設定時）
    ```bash
-   uv run -m github_actions_ai_improve_issue.main
+   uv run -m github_actions_ai_improve_issue
    ```
 2. **--dry-run**: ローカル検証用、コメント投稿スキップ
    ```bash
-   uv run -m github_actions_ai_improve_issue.main --dry-run
+   uv run -m github_actions_ai_improve_issue --dry-run
    ```
 3. **--index-issues**: 全Issue一括インデックス作成（初回セットアップ用）
    ```bash
-   uv run -m github_actions_ai_improve_issue.main --index-issues
+   uv run -m github_actions_ai_improve_issue --index-issues
    ```
 4. **--update-single-issue N**: 単一Issue更新（Issue番号Nを指定）
    ```bash
-   uv run -m github_actions_ai_improve_issue.main --update-single-issue 123
+   uv run -m github_actions_ai_improve_issue --update-single-issue 123
    ```
 
 ### RAGインデックス管理
@@ -239,17 +221,17 @@ export QDRANT_API_KEY="your-qdrant-api-key"
 export VOYAGE_API_KEY="your-voyage-api-key"
 
 # 全Issueをインデックス
-uv run -m github_actions_ai_improve_issue.main --index-issues
+uv run -m github_actions_ai_improve_issue --index-issues
 
 # 範囲指定も可能
-uv run -m github_actions_ai_improve_issue.main --index-issues --start 1 --end 100
+uv run -m github_actions_ai_improve_issue --index-issues --start 1 --end 100
 ```
 
 #### 単一Issue更新
 
 ```bash
 # Issue番号123を更新
-uv run -m github_actions_ai_improve_issue.main --update-single-issue 123
+uv run -m github_actions_ai_improve_issue --update-single-issue 123
 ```
 
 #### 自動更新

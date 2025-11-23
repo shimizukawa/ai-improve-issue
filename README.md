@@ -30,6 +30,17 @@
 6. 例文を参考に、Issue本文を編集
 7. 処理完了後、Workflowが `ai-improve` ラベルを自動で削除（再度ラベルを付ければ再実行可能）
 
+### CLIからの実行
+```bash
+# インストールして実行
+$ pip install github-actions-ai-improve-issue
+$ improve-issue
+
+# GitHubから直接実行
+uvx --from git+https://github.com/shimizukawa/github-actions-ai-improve-issue improve-issue
+```
+
+
 ### ローカル検証（開発者向け）
 
 ```bash
@@ -41,17 +52,83 @@ export ISSUE_NUMBER="123"
 export LLM_API_KEY="your-gemini-api-key"
 
 # dry-runモードで実行（コメント投稿なし、コンソールに出力）
-uv run .github/scripts/improve_issue.py --dry-run
+uv run -m github_actions_ai_improve_issue --dry-run
 ```
+
+## 設定ファイル
+
+### 必須設定
+
+設定ファイルが必須です。設定ファイルが見つからない場合はエラーで終了します。
+
+設定ファイルの配置場所:
+1. 環境変数 `IMPROVE_ISSUE_CONFIG` で指定したパス（優先）
+2. リポジトリルート直下の `.improve_issue.yml`（デフォルト）
+
+### 設定ファイルの構造
+
+```yaml
+default_template: feature_request
+
+templates:
+  feature_request:
+    issue_template_file: feature_request
+    system_prompt: |
+      あなたはプロジェクト管理の専門家です。以下のIssue記述を、機能要件テンプレートに沿った具体的で詳細な内容に拡張してください。
+      
+      【重要な指示】
+      - 抽象的な表現を避け、具体的に記述してください
+      - Issue記述から推測できる範囲で詳細化してください
+      - 不明な点は「要確認」として明示してください
+      - Markdown形式で出力してください
+      - 各項目は箇条書きで、少なくとも2-3項目記述してください
+    keywords:
+      - 機能
+      - 追加
+      - 変更
+      - 改善
+      - したい
+      - 欲しい
+      - 必要
+
+  bug_report:
+    issue_template_file: bug_report
+    system_prompt: |
+      あなたはソフトウェアテストの専門家です。以下のバグ報告を、詳細で再現可能な形式に拡張してください。
+      
+      【重要な指示】
+      - 再現手順を具体的に記述してください
+      - エラーメッセージやスクリーンショットの必要性を明示してください
+      - Markdown形式で出力してください
+    keywords:
+      - バグ
+      - エラー
+      - 不具合
+      - 動かない
+      - 失敗
+      - 問題
+```
+
+設定項目:
+- `default_template`: テンプレート判定でキーワードマッチしない場合のデフォルトテンプレート名
+- `templates`: テンプレート定義の辞書
+  - `issue_template_file`: `.github/ISSUE_TEMPLATE/` 配下のテンプレートファイル名（拡張子 `.md` は不要）
+  - `system_prompt`: LLM に渡すシステムプロンプト（テンプレートごとにカスタマイズ可能）
+  - `keywords`: テンプレート判定に使用するキーワードリスト（日本語・英語対応）
+
+### テンプレートのカスタマイズ
+
+テンプレートを追加・変更する場合:
+1. `.improve_issue.yml` にテンプレート定義を追加
+2. `.github/ISSUE_TEMPLATE/` に対応する Issue テンプレートファイルを配置
 
 ## テンプレート判定
 
-Issue本文とタイトルから、以下のテンプレートを自動判定します：
+Issue本文とタイトルから、設定ファイルで定義されたテンプレートを自動判定します。
+キーワードマッチ数が最も多いテンプレートが選択されます。
+キーワードがマッチしない場合は `default_template` が使用されます。
 
-| テンプレート | キーワード例 | 用途 |
-|------------|------------|------|
-| feature_request | 機能、追加、変更、改善、したい | 機能要件 |
-| bug_report | バグ、エラー、不具合、動かない | バグ報告 |
+デフォルト設定では、日本語と英語の両方のキーワードに対応しています。
 
 ### Phase 2の実装範囲
 
@@ -107,39 +184,40 @@ Issue本文とタイトルから、以下のテンプレートを自動判定し
 ### ファイル構成
 
 ```
+.improve_issue.yml              # 設定ファイル（必須）
 README.md                       # this file
 .github/
 ├── ISSUE_TEMPLATE/             # templates
 │   ├── bug_report.md
 │   └── feature_request.md
-├── scripts/
-│   └── improve_issue.py        # main script
 └── workflows/
-	└── issue_auto_improve.yml  # GitHub Actions Workflow
+    └── issue_auto_improve.yml  # GitHub Actions Workflow
+src/
+└── github_actions_ai_improve_issue/
+    ├── __init__.py
+    └── main.py                 # メインスクリプト
 ```
 
-### 依存関係
-
-PEP-723に従い、スクリプト内で依存関係を定義：
-
-```python
-# /// script
-# dependencies = [
-#   "some-package==0.0.0",
-# ]
-# ///
-```
-
-`uv run` コマンドで実行すると、自動的に依存関係のインストール後に実行されます。
-
-### 実装モード
+### 実行コマンド
 
 スクリプトは以下の実行モードをサポート：
 
 1. **通常モード**: GitHub Actionsから実行、コメント投稿、RAG検索（環境変数設定時）
+   ```bash
+   uv run -m github_actions_ai_improve_issue
+   ```
 2. **--dry-run**: ローカル検証用、コメント投稿スキップ
+   ```bash
+   uv run -m github_actions_ai_improve_issue --dry-run
+   ```
 3. **--index-issues**: 全Issue一括インデックス作成（初回セットアップ用）
+   ```bash
+   uv run -m github_actions_ai_improve_issue --index-issues
+   ```
 4. **--update-single-issue N**: 単一Issue更新（Issue番号Nを指定）
+   ```bash
+   uv run -m github_actions_ai_improve_issue --update-single-issue 123
+   ```
 
 ### RAGインデックス管理
 
@@ -154,17 +232,17 @@ export QDRANT_API_KEY="your-qdrant-api-key"
 export VOYAGE_API_KEY="your-voyage-api-key"
 
 # 全Issueをインデックス
-uv run .github/scripts/improve_issue.py --index-issues
+uv run -m github_actions_ai_improve_issue --index-issues
 
 # 範囲指定も可能
-uv run .github/scripts/improve_issue.py --index-issues --start 1 --end 100
+uv run -m github_actions_ai_improve_issue --index-issues --start 1 --end 100
 ```
 
 #### 単一Issue更新
 
 ```bash
 # Issue番号123を更新
-uv run .github/scripts/improve_issue.py --update-single-issue 123
+uv run -m github_actions_ai_improve_issue --update-single-issue 123
 ```
 
 #### 自動更新

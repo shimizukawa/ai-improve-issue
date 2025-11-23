@@ -20,6 +20,19 @@
 
 ## 使い方
 
+### 環境変数
+
+- `ISSUE_NUMBER`：Issue番号
+- `ISSUE_TITLE`：Issueのタイトル
+- `ISSUE_BODY`：Issueの本文
+- `GITHUB_REPOSITORY`: GitHubリポジトリ名
+- `GITHUB_TOKEN`: GitHubアクセストークン
+- `GEMINI_API_KEY`：Gemini APIキー
+- `QDRANT_URL`：Qdrant CloudのURL（RAG機能利用時）
+- `QDRANT_API_KEY`：Qdrant APIキー（RAG機能利用時）
+- `VOYAGE_API_KEY`：Voyage AI APIキー（RAG機能利用時）
+
+
 ### 通常の利用（GitHub Actions）
 
 1. リポジトリにIssueを作成
@@ -30,49 +43,36 @@
 6. 例文を参考に、Issue本文を編集
 7. 処理完了後、Workflowが `ai-improve` ラベルを自動で削除（再度ラベルを付ければ再実行可能）
 
+Actionsの設定例は `.github/workflows/ai_improve_issue.yml` を参照してください。
+
 ### CLIからの実行
 
-CLIコマンドを実行する前に、以下の環境変数を設定する必要があります：
-
-- `ISSUE_TITLE`：Issueのタイトル
-- `ISSUE_BODY`：Issueの本文
-- `ISSUE_NUMBER`：Issue番号
-- `LLM_API_KEY`：Gemini APIキー
-
-これらの環境変数が未設定の場合、コマンド実行時にエラーが表示されます。
-
-#### 例: 必要な環境変数を設定してCLIを実行
+CLIコマンドを実行する前に、環境変数を設定してください。
 
 ```bash
 # インストールして実行
 $ pip install ai-improve-issue
 
 # 必要な環境変数を設定
+export ISSUE_NUMBER="123"
 export ISSUE_TITLE="Mermaid図の拡大縮小機能"
 export ISSUE_BODY="ページ編集 でMermaid図の部分だけ別ウインドウで表示して拡大縮小したい。ページ全体の編集ではプレビューの縦位置がずれてしまうため使いづらい"
-export ISSUE_NUMBER="123"
-export LLM_API_KEY="your-gemini-api-key"
+export GEMINI_API_KEY="your-gemini-api-key"
 
 # コマンドを実行
 $ ai-improve-issue
 ```
 
-# GitHubから直接実行する場合も同様に環境変数を設定してください
+# GitHubから直接実行する場合
+```bash
 uvx --from git+https://github.com/shimizukawa/ai-improve-issue ai-improve-issue
 ```
 
-
 ### ローカル検証（開発者向け）
 
+dry-runモードで実行（コメント投稿なし、コンソールに出力）
+
 ```bash
-# 環境変数設定
-
-export ISSUE_TITLE="Mermaid図の拡大縮小機能"
-export ISSUE_BODY="ページ編集 でMermaid図の部分だけ別ウインドウで表示して拡大縮小したい。ページ全体の編集ではプレビューの縦位置がずれてしまうため使いづらい"
-export ISSUE_NUMBER="123"
-export LLM_API_KEY="your-gemini-api-key"
-
-# dry-runモードで実行（コメント投稿なし、コンソールに出力）
 uv run -m ai_improve_issue --dry-run
 ```
 
@@ -212,7 +212,7 @@ README.md                       # this file
 │   ├── bug_report.md
 │   └── feature_request.md
 └── workflows/
-    └── issue_auto_improve.yml  # GitHub Actions Workflow
+    └── ai_improve_issue.yml  # GitHub Actions Workflow
 src/
 └── ai_improve_issue/
     ├── __init__.py

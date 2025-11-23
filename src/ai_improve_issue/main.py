@@ -65,8 +65,8 @@ class Config:
     )
 
     # LLM API（通常モード実行時に必須）
-    llm_api_key: str = dataclasses.field(
-        default_factory=lambda: os.environ.get("LLM_API_KEY", "")
+    gemini_api_key: str = dataclasses.field(
+        default_factory=lambda: os.environ.get("GEMINI_API_KEY", "")
     )
 
     # RAG機能（オプション - 全て設定された場合のみ有効化）
@@ -89,8 +89,8 @@ class Config:
         """通常モード実行時の必須環境変数チェック"""
         if not self.issue_number:
             raise ValueError("Error: ISSUE_NUMBER not set")
-        if not self.llm_api_key:
-            raise ValueError("Error: LLM_API_KEY not set")
+        if not self.gemini_api_key:
+            raise ValueError("Error: GEMINI_API_KEY not set")
 
     def validate_for_github_operations(self):
         """GitHub操作が必要な場合の環境変数チェック"""
@@ -1111,7 +1111,7 @@ def main():
     improved_content, template_name = generate_improved_content(
         config.issue_body,
         config.issue_title,
-        config.llm_api_key,
+        config.gemini_api_key,
         similar_issues,
         settings,
     )

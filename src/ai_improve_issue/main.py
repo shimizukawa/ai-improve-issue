@@ -436,8 +436,8 @@ class TextProcessAgent:
 
         try:
             selected: dict[str, str] = json.loads(text)
-        except json.JSONDecodeError:
-            print("JSONデコードエラー。デフォルトテンプレートを使用します。")
+        except json.JSONDecodeError as e:
+            print(f"JSONデコードエラー: {e}。テキスト: {text}。デフォルトテンプレートを使用します。")
             return settings.default_template
 
         name = selected.get("template", "")

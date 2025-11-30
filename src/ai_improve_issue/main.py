@@ -432,7 +432,7 @@ class TextProcessAgent:
 
         print(f"選択された内容: {text=}")
         # {.*} 部分のみ抽出
-        text = re.sub(r"(?s).*?(\{.*\}).*", r"\1", text)
+        text = re.sub(r"(?s).*?(\{.*?\}).*", r"\1", text)
 
         try:
             selected: dict[str, str] = json.loads(text)

@@ -426,8 +426,8 @@ class TextProcessAgent:
 
         try:
             text = response.text or ""
-        except ValueError:
-            print("response.text 取得でエラー。デフォルトテンプレートを使用します。")
+        except ValueError as e:
+            print(f"response.text 取得でエラー ({e})。デフォルトテンプレートを使用します。")
             return settings.default_template
 
         print(f"選択された内容: {text=}")
